@@ -16,6 +16,7 @@ on:
 permissions:
   contents: read
   security-events: write # upload SARIF
+  actions: read # upload-sarif reads the run; required on private repos
 
 jobs:
   audit:
@@ -38,7 +39,9 @@ jobs:
           bundler-audit: "false" # Ruby-only advisory db; npm advisories come via deps.dev + OSV
           github-token: ${{ github.token }}
           sarif: still_active.sarif.json
+      # Code scanning on a private repo needs GitHub Code Security, so the Security-tab report
+      # waits until the repo is public. The vulnerability gate above runs either way.
       - uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && !github.event.repository.private
         with:
           sarif_file: still_active.sarif.json
