@@ -7,7 +7,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-First release, not yet cut. A TypeScript port of the `googlenewsdecoder` Python package, by way of
+## [0.1.0] - 2026-09-23
+
+First release. A TypeScript port of the `googlenewsdecoder` Python package, by way of
 [SeanLF/google-news-url-decoder](https://github.com/SeanLF/google-news-url-decoder).
 
 ### Added
@@ -35,3 +37,6 @@ First release, not yet cut. A TypeScript port of the `googlenewsdecoder` Python 
 - Zero runtime dependencies. The first release is built, tested and published by hand, because
   npm trusted publishing needs the package to exist. Later releases are built by CI with no
   credential, staged through trusted publishing, and go live only on a maintainer's 2FA approval.
+
+[Unreleased]: https://github.com/SeanLF/gnews-decoder/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/SeanLF/gnews-decoder/releases/tag/v0.1.0
