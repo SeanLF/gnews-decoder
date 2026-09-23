@@ -7,15 +7,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-09-23
-
-First release. A TypeScript port of the `googlenewsdecoder` Python package, by way of
+First release, not yet cut. A TypeScript port of the `googlenewsdecoder` Python package, by way of
 [SeanLF/google-news-url-decoder](https://github.com/SeanLF/google-news-url-decoder).
 
 ### Added
 
 - `createDecoder()`, with `decode()` for one URL and `decodeAll()` for a batch keyed by input
-  URL, paced by `delayMs`, stopping at the first rate limit.
+  URL, paced by `delayMs`, stopping at the first rate limit, and reporting each result to an
+  `onResult` callback as it lands (for progress, or a job runner's heartbeat).
 - `decode()` and `isGoogleNewsUrl()` for one-off use.
 - Structured results: `{ ok: true, url }` or `{ ok: false, reason, status?, message }`, with
   reasons `not_google_news`, `rate_limited`, `http`, `network`, `timeout`, `aborted` and `parse`.
@@ -30,11 +29,9 @@ First release. A TypeScript port of the `googlenewsdecoder` Python package, by w
 
 ### Security
 
-- Requests go only to `news.google.com`, and redirects only to `*.google.com`. The article token
+- Requests go only to `news.google.com`, and redirects only to `google.com` and its subdomains. The article token
   is limited in characters and length, the decoded URL must be http(s) with a host and no control
   characters, and responses are capped at 32 MB decoded.
-- Zero runtime dependencies. Releases are staged by CI through npm trusted publishing and go live
-  only on a maintainer's 2FA approval.
-
-[Unreleased]: https://github.com/SeanLF/gnews-decoder/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/SeanLF/gnews-decoder/releases/tag/v0.1.0
+- Zero runtime dependencies. The first release is built, tested and published by hand, because
+  npm trusted publishing needs the package to exist. Later releases are built by CI with no
+  credential, staged through trusted publishing, and go live only on a maintainer's 2FA approval.

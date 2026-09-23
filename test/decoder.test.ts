@@ -278,6 +278,36 @@ describe("decodeAll", () => {
     expect(results.get(OTHER_URL)).toMatchObject({ reason: "http", status: 404 });
   });
 
+  it("reports each result to onResult as it lands, skipped ones included", async () => {
+    const seen: string[] = [];
+    const { fetch } = scriptedFetch(status(429));
+    const results = await createDecoder({ fetch }).decodeAll(
+      ["https://example.com/a", SOURCE_URL, OTHER_URL],
+      {
+        onResult: (url, result) => {
+          // Called before the batch finishes: the map already holds this URL, and nothing after it.
+          seen.push(
+            `${url === SOURCE_URL ? "source" : url === OTHER_URL ? "other" : "plain"}:${result.ok ? "ok" : result.reason}`,
+          );
+        },
+      },
+    );
+    expect(seen).toEqual(["plain:not_google_news", "source:rate_limited", "other:skipped"]);
+    expect(results.size).toBe(3);
+  });
+
+  it("a throwing onResult rejects the batch rather than being swallowed", async () => {
+    const { fetch } = scriptedFetch();
+    const decoder = createDecoder({ fetch });
+    await expect(
+      decoder.decodeAll(["https://example.com/a"], {
+        onResult: () => {
+          throw new Error("heartbeat failed");
+        },
+      }),
+    ).rejects.toThrow("heartbeat failed");
+  });
+
   it("stops at a rate limit and skips the rest", async () => {
     const third = "https://news.google.com/articles/CBMiTHIRD";
     const { fetch, calls } = scriptedFetch(status(429));

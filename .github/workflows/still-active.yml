@@ -1,8 +1,8 @@
 name: Dependency health
 
 # The published package has no runtime dependencies, so an SBOM of what ships is empty. This audits
-# the dev toolchain instead, because the release job runs `npm ci` with it while holding an OIDC
-# token that can publish. Gated on vulnerabilities only: the maintenance flags are small finished
+# the dev toolchain instead: it builds the dist/ that ships, in a job with no credential, and a
+# compromised tool there would poison the tarball a maintainer is then asked to approve. Gated on vulnerabilities only: the maintenance flags are small finished
 # vitest transitives (stackback, siginfo) that we don't control, so they stay informational in the
 # Security tab.
 on:

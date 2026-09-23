@@ -75,9 +75,9 @@ type DecodeResult =
 
 A bad `timeoutMs` (zero, negative, `NaN`) throws a `RangeError`: that's a bug in the caller, not an expected case.
 
-### `decoder.decodeAll(urls, { signal?, timeoutMs?, delayMs? }) => Promise<Map<string, BatchResult>>`
+### `decoder.decodeAll(urls, { signal?, timeoutMs?, delayMs?, onResult? }) => Promise<Map<string, BatchResult>>`
 
-Decodes serially. Results are keyed by input URL, never by position; duplicates collapse. `delayMs` pauses only between decodes that reach the network. The batch stops at the first `rate_limited` or `aborted`; the rest come back `{ ok: false, reason: "skipped" }`. `timeoutMs` applies per decode.
+Decodes serially. Results are keyed by input URL, never by position; duplicates collapse. `delayMs` pauses only between decodes that reach the network. The batch stops at the first `rate_limited` or `aborted`; the rest come back `{ ok: false, reason: "skipped" }`. `timeoutMs` applies per decode. `onResult(url, result)` is called for each URL as its result lands, skipped ones included: use it for progress, or for a job runner's heartbeat, which in many runners is also how a job learns it was cancelled. If it throws, the batch rejects.
 
 ### `decode(url, options?)` and `isGoogleNewsUrl(url)`
 
@@ -107,7 +107,11 @@ npm run lint && npm run typecheck && npm run build
 
 Fixtures in `test/fixtures/` are one real decode recorded on 2026-09-23. Script and style bodies were stripped from the article page because they carry session tokens.
 
-Releases: `npm version <patch|minor|major> && git push --follow-tags`. The tag's workflow builds and tests, then *stages* the tarball on npm through trusted publishing; it goes live when a maintainer approves it under Staged Packages on npmjs.com, with 2FA. The publish job holds the only credential and installs nothing.
+### Releasing
+
+`npm version <patch|minor|major> && git push --follow-tags`. The tag's workflow builds and tests with no credential, then *stages* the tarball on npm through trusted publishing. It goes live when a maintainer approves it under Staged Packages on npmjs.com, with 2FA. Inspect it first (`npm stage download <id>`): approval is the control, so it has to be more than a click.
+
+Installs here run with scripts disabled (`.npmrc`), so nothing rebuilds `dist/` for you. Publishing by hand means `rm -rf dist && npm run build && npm test && npm pack`, checking the tarball, then `npm publish <tarball>`. The first release goes out that way, because a trusted publisher can only be added to a package that already exists.
 
 ## Credits
 

@@ -45,6 +45,12 @@ export interface DecodeOptions {
 export interface DecodeAllOptions extends DecodeOptions {
   /** Pause between decodes that reach the network. Cache hits and non-Google URLs don't wait. */
   delayMs?: number;
+  /**
+   * Called with each URL's result as soon as it is known, skipped ones included, in input order.
+   * For progress and liveness, such as a job runner's heartbeat, which is often also how a job
+   * learns it was cancelled. An exception thrown here ends the batch and rejects `decodeAll`.
+   */
+  onResult?: (url: string, result: BatchResult) => void;
 }
 
 export interface Decoder {
@@ -311,14 +317,18 @@ export function createDecoder(options: DecoderOptions = {}): Decoder {
   }
 
   async function decodeAll(urls: Iterable<string>, callOptions: DecodeAllOptions = {}) {
-    const { delayMs = 0, signal } = callOptions;
+    const { delayMs = 0, signal, onResult } = callOptions;
     const results = new Map<string, BatchResult>();
+    const record = (url: string, result: BatchResult) => {
+      results.set(url, result);
+      onResult?.(url, result);
+    };
     let stopped: string | undefined;
     let reachedNetwork = false;
     for (const url of urls) {
       if (results.has(url)) continue;
       if (stopped) {
-        results.set(url, { ok: false, reason: "skipped", message: stopped });
+        record(url, { ok: false, reason: "skipped", message: stopped });
         continue;
       }
       const token = articleToken(url);
@@ -330,7 +340,7 @@ export function createDecoder(options: DecoderOptions = {}): Decoder {
           ? { ok: false, reason: "aborted", message: "aborted by caller" }
           : await decode(url, callOptions);
       reachedNetwork ||= needsNetwork;
-      results.set(url, result);
+      record(url, result);
       if (!result.ok && result.reason === "rate_limited") stopped = "stopped after a rate limit";
       if (!result.ok && result.reason === "aborted") stopped = "aborted by caller";
     }

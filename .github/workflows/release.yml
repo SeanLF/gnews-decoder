@@ -4,6 +4,9 @@ name: Release
 # approves it under npmjs.com -> Staged Packages, with 2FA. The trusted publisher is configured with
 # --allow-stage-publish only, so this workflow cannot publish directly even if it tried.
 #
+# Not the first release: a trusted publisher can only be added to a package that already exists,
+# so the first is published by hand (README, "Releasing"). Every release after it comes through here.
+#
 # Only the publish job gets id-token: write, and it installs nothing and checks nothing out: it
 # stages the tarball the build job packed. A compromised dev dependency runs in the build job, which
 # holds no credential. Provenance is attached automatically once the repo is public.
@@ -37,6 +40,15 @@ jobs:
             echo "::error::tag $TAG does not match package.json version $version"
             exit 1
           fi
+      # A version that is already on npm fails at the stage step after the whole build; say so here.
+      # Also covers the tag of the first release, which was published by hand.
+      - name: Version not yet on npm
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if npm view "gnews-decoder@$version" version --registry=https://registry.npmjs.org 2>/dev/null | grep -q .; then
+            echo "::error::gnews-decoder@$version is already on npm; bump the version"
+            exit 1
+          fi
       - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run typecheck
@@ -56,7 +68,6 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
-    environment: npm
     permissions:
       id-token: write # exchanged by npm for a short-lived, stage-only publish credential
     steps:

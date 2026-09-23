@@ -27,7 +27,7 @@ Non-functional, in the order they decided things:
 
 ## Estimates
 
-The consumer does 10 to 30 decodes a day from one IP.
+Sized for 10 to 30 decodes a day from one IP.
 
 | | per decode | per day at 30 |
 |---|---|---|
@@ -60,7 +60,7 @@ decode(url)
 
 **Single point of failure: Google's undocumented contract.** Any change to the page attributes, the RPC envelope or the response framing breaks every decode, and no amount of replication helps. Everything else follows from that:
 
-- **Detection belongs to the caller.** Alert when `attempted > n` and `ok == 0`, or when the share of `parse` failures jumps. The Python version shipped a malformed envelope and resolved zero links for 25 days with nobody noticing. Distinct reasons exist so that breakage and throttling can't be mistaken for each other.
+- **Detection belongs to the caller.** Alert when `attempted > n` and `ok == 0`, or when the share of `parse` failures jumps. A hand-rolled version of this RPC once shipped with a malformed envelope and resolved zero links for 25 days before anyone noticed. Distinct reasons exist so that breakage and throttling can't be mistaken for each other.
 - **Walled exits are covered.** The fork's harness runs this package's `decode()` on VPN exits (`probes/walled_ts.py`, Node 24 and 26). On 2026-09-23 it decoded on 7 of 8 walled rows, with no `parse` failures. One decode through a slow exit took 28 s, above the 15 s default. The live smoke test decodes in about 1 s from the development machine's own connection, one measurement and not a survey, so the default stands; a caller behind a slow proxy or exit should raise `timeoutMs`.
 - **The live smoke test** (`npm run test:live`) is the check for when that alert fires. It is not in CI: a shared runner IP spends someone else's budget and would flake.
 - **Recovery is a fixture update:** record a new decode and adjust `protocol.ts`. The pure layer is where changes land.
@@ -72,7 +72,7 @@ decode(url)
 - **Input to the RPC:** built with `JSON.stringify`, so a hostile signature can't escape its string.
 - **Resource exhaustion:** the response cap, the redirect cap (10) and the deadline.
 - **Logs:** `message` never includes the article URL or token.
-- **Supply chain:** zero runtime dependencies. Releases go through npm trusted publishing (OIDC, no stored token), restricted to *staged* publishes that a maintainer approves with 2FA; provenance is attached once the repo is public. Only the publish job holds a credential, and it installs nothing. Actions are pinned by SHA, installs run with scripts disabled, zizmor audits the workflows, and Dependabot proposes bumps after a 3-day cooldown.
+- **Supply chain:** zero runtime dependencies. Releases after the first (which is published by hand, since trusted publishing needs the package to exist) go through npm trusted publishing (OIDC, no stored token), restricted to *staged* publishes that a maintainer approves with 2FA; provenance is attached once the repo is public. Only the publish job holds a credential, and it installs nothing. Actions are pinned by SHA, installs run with scripts disabled, zizmor audits the workflows, and both Dependabot and local installs (`min-release-age`) wait 3 days for a new release.
 
 ## Idempotency and retries
 
