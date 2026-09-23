@@ -19,7 +19,43 @@ on:
 permissions: {}
 
 jobs:
+  # Tag and version agree, and whether that version is already on npm. An already-published
+  # version (the first release, published by hand, or a re-pushed tag) has nothing to release: the
+  # run succeeds with a warning and skips build and publish, rather than failing red for no fault.
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      published: ${{ steps.registry.outputs.published }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Tag matches package.json
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::tag $TAG does not match package.json version $version"
+            exit 1
+          fi
+      - name: Already on npm?
+        id: registry
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if npm view "gnews-decoder@$version" version --registry=https://registry.npmjs.org 2>/dev/null | grep -q .; then
+            echo "::warning::gnews-decoder@$version is already on npm; nothing to release"
+            echo "gnews-decoder@$version is already on npm, so this run released nothing." >> "$GITHUB_STEP_SUMMARY"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: check
+    if: needs.check.outputs.published == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,24 +67,6 @@ jobs:
         with:
           node-version: 26
           package-manager-cache: false
-      - name: Tag matches package.json
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          version="$(node -p 'require("./package.json").version')"
-          if [ "v$version" != "$TAG" ]; then
-            echo "::error::tag $TAG does not match package.json version $version"
-            exit 1
-          fi
-      # A version that is already on npm fails at the stage step after the whole build; say so here.
-      # Also covers the tag of the first release, which was published by hand.
-      - name: Version not yet on npm
-        run: |
-          version="$(node -p 'require("./package.json").version')"
-          if npm view "gnews-decoder@$version" version --registry=https://registry.npmjs.org 2>/dev/null | grep -q .; then
-            echo "::error::gnews-decoder@$version is already on npm; bump the version"
-            exit 1
-          fi
       - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run typecheck
