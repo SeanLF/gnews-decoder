@@ -111,7 +111,7 @@ Fixtures in `test/fixtures/` are one real decode recorded on 2026-09-23. Script 
 
 `npm version <patch|minor|major> && git push --follow-tags`. The tag's workflow builds and tests with no credential, then *stages* the tarball on npm through trusted publishing. It goes live when a maintainer approves it under Staged Packages on npmjs.com, with 2FA. Inspect it first (`npm stage download <id>`): approval is the control, so it has to be more than a click.
 
-Installs here run with scripts disabled (`.npmrc`), so nothing rebuilds `dist/` for you. Publishing by hand means `rm -rf dist && npm run build && npm test && npm pack`, checking the tarball, then `npm publish <tarball>`. The first release goes out that way, because a trusted publisher can only be added to a package that already exists.
+Installs here run with scripts disabled and a 7-day cooldown (`.npmrc`): adding a release younger than a week fails with `ERESOLVE` on purpose; pass `--min-release-age=0` when you mean it. Nothing rebuilds `dist/` for you. Publishing by hand means `rm -rf dist && npm run build && npm test && npm pack`, checking the tarball, then `npm publish <tarball>`. The first release goes out that way, because a trusted publisher can only be added to a package that already exists.
 
 ## Credits
 
