@@ -61,7 +61,7 @@ decode(url)
 **Single point of failure: Google's undocumented contract.** Any change to the page attributes, the RPC envelope or the response framing breaks every decode, and no amount of replication helps. Everything else follows from that:
 
 - **Detection belongs to the caller.** Alert when `attempted > n` and `ok == 0`, or when the share of `parse` failures jumps. The Python version shipped a malformed envelope and resolved zero links for 25 days with nobody noticing. Distinct reasons exist so that breakage and throttling can't be mistaken for each other.
-- **Walled exits are covered.** The fork's harness runs this package's `decode()` on VPN exits (`probes/walled_ts.py`, Node 24 and 26). On 2026-09-23 it decoded on 7 of 8 walled rows, with no `parse` failures. One decode through a slow exit took 28 s, above the 15 s default. A residential address decodes in about 1 s, so the default stands; a caller behind a slow proxy should raise `timeoutMs`.
+- **Walled exits are covered.** The fork's harness runs this package's `decode()` on VPN exits (`probes/walled_ts.py`, Node 24 and 26). On 2026-09-23 it decoded on 7 of 8 walled rows, with no `parse` failures. One decode through a slow exit took 28 s, above the 15 s default. The live smoke test decodes in about 1 s from the development machine's own connection, one measurement and not a survey, so the default stands; a caller behind a slow proxy or exit should raise `timeoutMs`.
 - **The live smoke test** (`npm run test:live`) is the check for when that alert fires. It is not in CI: a shared runner IP spends someone else's budget and would flake.
 - **Recovery is a fixture update:** record a new decode and adjust `protocol.ts`. The pure layer is where changes land.
 
