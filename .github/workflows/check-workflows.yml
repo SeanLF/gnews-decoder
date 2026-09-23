@@ -1,0 +1,26 @@
+name: Check workflows
+
+# zizmor audits the workflows themselves: unpinned actions, template injection, credentials left in
+# the checkout, over-broad permissions. The release workflow holds a publish credential, so a
+# mistake in any workflow is a supply-chain mistake.
+on:
+  push:
+    branches: [main]
+    paths: [".github/**"]
+  pull_request:
+    paths: [".github/**"]
+
+permissions: {}
+
+jobs:
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          advanced-security: false # SARIF upload needs Code Security on a private repo; fail the job instead

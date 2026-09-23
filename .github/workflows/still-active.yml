@@ -13,26 +13,30 @@ on:
     - cron: "0 6 8 * *" # monthly
   workflow_dispatch:
 
-permissions:
-  contents: read
-  security-events: write # upload SARIF
-  actions: read # upload-sarif reads the run; required on private repos
+permissions: {}
 
 jobs:
   audit:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # upload SARIF
+      actions: read # upload-sarif reads the run; required on private repos
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: lts/*
+          package-manager-cache: false
       - name: CycloneDX SBOM of the lockfile (npm's own)
         # --package-lock-only: there's no node_modules here, and without it npm sbom exits ESBOMPROBLEMS.
         run: npm sbom --sbom-format cyclonedx --package-lock-only > sbom.json
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@762794c140bbeda0f1224786aa33b4b46783a6c1 # v1.326.0
         with:
           ruby-version: "4.0"
-      - uses: SeanLF/still_active-action@v0.4.1
+      - uses: SeanLF/still_active-action@934c8ccee4f0f160be53f5e169d5844483f7a3ed # v0.4.1
         with:
           sbom: sbom.json
           fail-if-vulnerable: high
@@ -41,7 +45,7 @@ jobs:
           sarif: still_active.sarif.json
       # Code scanning on a private repo needs GitHub Code Security, so the Security-tab report
       # waits until the repo is public. The vulnerability gate above runs either way.
-      - uses: github/codeql-action/upload-sarif@v4
+      - uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         if: always() && !github.event.repository.private
         with:
           sarif_file: still_active.sarif.json

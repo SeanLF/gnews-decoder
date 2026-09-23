@@ -1,40 +1,70 @@
 name: Release
 
-# Tag push -> checks -> npm publish via trusted publishing (OIDC), which attaches provenance on its
-# own; no NPM_TOKEN secret exists or is needed. Before the first tag, add this repo and workflow
-# file as a trusted publisher on npmjs.com (package settings -> Trusted publishing). Then:
+# Tag push -> build and test -> STAGE the tarball on npm. Nothing goes live until a maintainer
+# approves it under npmjs.com -> Staged Packages, with 2FA. The trusted publisher is configured with
+# --allow-stage-publish only, so this workflow cannot publish directly even if it tried.
+#
+# Only the publish job gets id-token: write, and it installs nothing and checks nothing out: it
+# stages the tarball the build job packed. A compromised dev dependency runs in the build job, which
+# holds no credential. Provenance is attached automatically once the repo is public.
+#
 #   npm version <patch|minor|major> && git push --follow-tags
 on:
   push:
     tags: ["v*"]
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+          package-manager-cache: false
+      - name: Tag matches package.json
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::tag $TAG does not match package.json version $version"
+            exit 1
+          fi
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - run: npm pack --ignore-scripts
+      # With scripts off, pack never builds: a missing build step would ship a package with no code.
+      - name: Tarball carries the build
+        run: tar -tzf gnews-decoder-*.tgz | grep -qx 'package/dist/index.js'
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tarball
+          path: gnews-decoder-*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
   publish:
+    needs: build
     runs-on: ubuntu-latest
     environment: npm
     permissions:
-      contents: read
-      id-token: write # the OIDC token npm exchanges for a publish credential
+      id-token: write # exchanged by npm for a short-lived, stage-only publish credential
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: lts/*
-          registry-url: https://registry.npmjs.org
-      # Trusted publishing needs npm >= 11.5.1; the LTS may bundle an older one.
-      - run: npm install -g npm@latest
-      - name: Tag matches package.json
-        run: |
-          version="$(node -p 'require("./package.json").version')"
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
-            exit 1
-          fi
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm publish --access public --provenance
+          node-version: 26 # its bundled npm has `npm stage` and trusted publishing
+          package-manager-cache: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: tarball
+      - run: npm stage publish ./gnews-decoder-*.tgz --ignore-scripts --access public

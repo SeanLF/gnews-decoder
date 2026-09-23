@@ -72,7 +72,7 @@ decode(url)
 - **Input to the RPC:** built with `JSON.stringify`, so a hostile signature can't escape its string.
 - **Resource exhaustion:** the response cap, the redirect cap (10) and the deadline.
 - **Logs:** `message` never includes the article URL or token.
-- **Supply chain:** zero runtime dependencies. Publishing uses npm trusted publishing (OIDC, no stored token) with provenance. Dependabot proposes bumps for dev dependencies and Actions.
+- **Supply chain:** zero runtime dependencies. Releases go through npm trusted publishing (OIDC, no stored token), restricted to *staged* publishes that a maintainer approves with 2FA; provenance is attached once the repo is public. Only the publish job holds a credential, and it installs nothing. Actions are pinned by SHA, installs run with scripts disabled, zizmor audits the workflows, and Dependabot proposes bumps after a 3-day cooldown.
 
 ## Idempotency and retries
 

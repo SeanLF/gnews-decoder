@@ -1,12 +1,16 @@
 version: 2
 updates:
+  # A 3-day cooldown: most compromised releases are caught and pulled within days, and a
+  # four-package toolchain gains nothing from getting a release sooner.
   - package-ecosystem: npm
     directory: /
     schedule: { interval: monthly }
+    cooldown: { default-days: 3 }
     groups:
       dev: { patterns: ["*"] }
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: monthly }
+    cooldown: { default-days: 3 }
     groups:
       actions: { patterns: ["*"] }

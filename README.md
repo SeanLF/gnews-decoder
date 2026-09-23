@@ -36,10 +36,8 @@ const results = await decoder.decodeAll(urls, { delayMs: 1_500, signal });
 
 ## Getting started
 
-> Not on npm yet. Until the first release, install from GitHub.
-
 ```sh
-npm install github:SeanLF/gnews-decoder   # after release: npm install gnews-decoder
+npm install gnews-decoder
 ```
 
 Needs Node 24 or later; CI runs the active LTS and the current release. No other setup: no API key, no config.
@@ -109,7 +107,7 @@ npm run lint && npm run typecheck && npm run build
 
 Fixtures in `test/fixtures/` are one real decode recorded on 2026-09-23. Script and style bodies were stripped from the article page because they carry session tokens.
 
-Releases: `npm version <patch|minor|major> && git push --follow-tags`. The release workflow publishes from the tag through npm trusted publishing, with provenance.
+Releases: `npm version <patch|minor|major> && git push --follow-tags`. The tag's workflow builds and tests, then *stages* the tarball on npm through trusted publishing; it goes live when a maintainer approves it under Staged Packages on npmjs.com, with 2FA. The publish job holds the only credential and installs nothing.
 
 ## Credits
 
