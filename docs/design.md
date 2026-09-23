@@ -61,6 +61,7 @@ decode(url)
 **Single point of failure: Google's undocumented contract.** Any change to the page attributes, the RPC envelope or the response framing breaks every decode, and no amount of replication helps. Everything else follows from that:
 
 - **Detection belongs to the caller.** Alert when `attempted > n` and `ok == 0`, or when the share of `parse` failures jumps. The Python version shipped a malformed envelope and resolved zero links for 25 days with nobody noticing. Distinct reasons exist so that breakage and throttling can't be mistaken for each other.
+- **Walled exits are covered.** The fork's harness runs this package's `decode()` on VPN exits (`probes/walled_ts.py`, Node 24 and 26). On 2026-09-23 it decoded on 7 of 8 walled rows, with no `parse` failures. One decode through a slow exit took 28 s, above the 15 s default. A residential address decodes in about 1 s, so the default stands; a caller behind a slow proxy should raise `timeoutMs`.
 - **The live smoke test** (`npm run test:live`) is the check for when that alert fires. It is not in CI: a shared runner IP spends someone else's budget and would flake.
 - **Recovery is a fixture update:** record a new decode and adjust `protocol.ts`. The pure layer is where changes land.
 
@@ -95,4 +96,4 @@ Semver. The public contract is the exported types, the `reason` union, `status` 
 
 ## Not done yet
 
-- **Batched RPC.** One POST for N decodes, results keyed by the tag sent with each, never by position; the fork measured Google reordering them. It saves N−1 requests out of 2N a day. Worth doing if the budget becomes the constraint. It needs a batch-level deadline and a rule for a partly-failed chunk.
+- **Batched RPC.** One POST for N decodes, results keyed by the tag sent with each, never by position; the fork measured Google reordering them. Measured 2026-09-23 with the fork's VPN harness (`probes/post_budget.py`): 1,200 POSTs across four exits drew no 429, addresses refusing GETs kept serving POSTs, and 300 POSTs left GET budgets in the usual range. So a POST costs well under a GET; whether it costs anything the variance between addresses hides. Batching therefore saves N−1 round trips of latency and little or no budget, since the article GETs are one per URL either way. Not worth its batch-level deadline and partial-failure rules at 30 decodes a day.
