@@ -26,7 +26,8 @@ jobs:
         with:
           node-version: lts/*
       - name: CycloneDX SBOM of the lockfile (npm's own)
-        run: npm sbom --sbom-format cyclonedx > sbom.json
+        # --package-lock-only: there's no node_modules here, and without it npm sbom exits ESBOMPROBLEMS.
+        run: npm sbom --sbom-format cyclonedx --package-lock-only > sbom.json
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0"
