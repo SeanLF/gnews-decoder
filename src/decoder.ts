@@ -317,19 +317,18 @@ export function createDecoder(options: DecoderOptions = {}): Decoder {
     let reachedNetwork = false;
     for (const url of urls) {
       if (results.has(url)) continue;
-      if (!stopped && signal?.aborted) stopped = "aborted by caller";
       if (stopped) {
         results.set(url, { ok: false, reason: "skipped", message: stopped });
         continue;
       }
       const token = articleToken(url);
       const needsNetwork = token !== null && !cache?.has(token);
-      if (needsNetwork && reachedNetwork && delayMs > 0 && !(await sleep(delayMs, signal))) {
-        stopped = "aborted by caller";
-        results.set(url, { ok: false, reason: "skipped", message: stopped });
-        continue;
-      }
-      const result = await decode(url, callOptions);
+      // An abort during the pause is reported on the URL it delayed, as `decode` would report it.
+      const paused = needsNetwork && reachedNetwork && delayMs > 0;
+      const result: DecodeResult =
+        paused && !(await sleep(delayMs, signal))
+          ? { ok: false, reason: "aborted", message: "aborted by caller" }
+          : await decode(url, callOptions);
       reachedNetwork ||= needsNetwork;
       results.set(url, result);
       if (!result.ok && result.reason === "rate_limited") stopped = "stopped after a rate limit";
@@ -342,7 +341,11 @@ export function createDecoder(options: DecoderOptions = {}): Decoder {
 }
 
 /** One decode with a throwaway decoder. Holds no state between calls. */
-export function decode(url: string, options: DecoderOptions & DecodeOptions = {}): Promise<DecodeResult> {
+// async so a bad timeoutMs rejects, as it does from the method, rather than throwing synchronously.
+export async function decode(
+  url: string,
+  options: DecoderOptions & DecodeOptions = {},
+): Promise<DecodeResult> {
   return createDecoder(options).decode(url, options);
 }
 

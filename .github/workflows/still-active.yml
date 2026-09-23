@@ -1,0 +1,43 @@
+name: Dependency health
+
+# The published package has no runtime dependencies, so an SBOM of what ships is empty. This audits
+# the dev toolchain instead, because the release job runs `npm ci` with it while holding an OIDC
+# token that can publish. Gated on vulnerabilities only: the maintenance flags are small finished
+# vitest transitives (stackback, siginfo) that we don't control, so they stay informational in the
+# Security tab.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 8 * *" # monthly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write # upload SARIF
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - name: CycloneDX SBOM of the lockfile (npm's own)
+        run: npm sbom --sbom-format cyclonedx > sbom.json
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+      - uses: SeanLF/still_active-action@v0.4.1
+        with:
+          sbom: sbom.json
+          fail-if-vulnerable: high
+          bundler-audit: "false" # Ruby-only advisory db; npm advisories come via deps.dev + OSV
+          github-token: ${{ github.token }}
+          sarif: still_active.sarif.json
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: still_active.sarif.json

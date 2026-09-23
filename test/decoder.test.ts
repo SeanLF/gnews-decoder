@@ -297,7 +297,19 @@ describe("decodeAll", () => {
     expect(elapsed).toBeLessThan(115);
   });
 
-  it("an abort during the pause skips the rest", async () => {
+  it("an already-aborted batch reports aborted on the first network URL, then skips", async () => {
+    const { fetch, calls } = scriptedFetch();
+    const results = await createDecoder({ fetch }).decodeAll(
+      ["https://example.com/a", SOURCE_URL, OTHER_URL],
+      { signal: AbortSignal.abort() },
+    );
+    expect(results.get("https://example.com/a")).toMatchObject({ reason: "not_google_news" });
+    expect(results.get(SOURCE_URL)).toMatchObject({ reason: "aborted" });
+    expect(results.get(OTHER_URL)).toMatchObject({ reason: "skipped" });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("an abort during the pause is reported on the URL it delayed", async () => {
     const controller = new AbortController();
     const { fetch } = scriptedFetch(status(404), status(404));
     setTimeout(() => controller.abort(), 20);
@@ -305,6 +317,11 @@ describe("decodeAll", () => {
       delayMs: 5000,
       signal: controller.signal,
     });
-    expect(results.get(OTHER_URL)).toMatchObject({ reason: "skipped" });
+    expect(results.get(OTHER_URL)).toMatchObject({ reason: "aborted" });
   });
+});
+
+it("the standalone decode rejects a bad timeout rather than throwing synchronously", async () => {
+  const pending = decode(SOURCE_URL, { timeoutMs: 0 });
+  await expect(pending).rejects.toThrow(RangeError);
 });
