@@ -1,0 +1,36 @@
+name: CI
+
+# Lint, typecheck, build and the offline tests on the current Node and the active LTS. The live
+# smoke test never runs here: Google's budget is per IP, and a shared runner IP is someone else's
+# budget too. No dependency cache: four dev dependencies install faster than a cache restores.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 15 * *" # monthly: catch Node/TypeScript drift while the repo is quiet
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [lts/*, current]
+    name: node ${{ matrix.node }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - name: package contents
+        run: npm pack --dry-run

@@ -1,0 +1,48 @@
+{
+  "name": "gnews-decoder",
+  "version": "0.1.0",
+  "description": "Decode Google News redirect URLs (news.google.com/rss/articles/…) to the publisher URL. Structured results, whole-decode timeout, no global state.",
+  "keywords": [
+    "google-news",
+    "decoder",
+    "url",
+    "rss",
+    "batchexecute"
+  ],
+  "license": "MIT",
+  "author": "Sean Floyd <contact@seanfloyd.dev>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SeanLF/gnews-decoder.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "biome ci .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "test:live": "GNEWS_LIVE=1 vitest run test/live.test.ts",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}

@@ -1,0 +1,40 @@
+name: Release
+
+# Tag push -> checks -> npm publish via trusted publishing (OIDC), which attaches provenance on its
+# own; no NPM_TOKEN secret exists or is needed. Before the first tag, add this repo and workflow
+# file as a trusted publisher on npmjs.com (package settings -> Trusted publishing). Then:
+#   npm version <patch|minor|major> && git push --follow-tags
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # the OIDC token npm exchanges for a publish credential
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm >= 11.5.1; the LTS may bundle an older one.
+      - run: npm install -g npm@latest
+      - name: Tag matches package.json
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm publish --access public --provenance
